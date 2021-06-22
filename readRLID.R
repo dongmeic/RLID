@@ -67,9 +67,13 @@ data <- merge(sales.subset, unique.taxlot.sales,
               by='maplot')
 data_new <- data[, colSums(is.na(data)) < nrow(data)]
 data_new$sales_s <- round((data_new$sale_price - mean(data_new$sale_price))/sd(data_new$sale_price),0)
+unique(data_new$sales_s)
+
 outfolder <- 'C:/Users/clid1852/OneDrive - lanecouncilofgovernments/RLID/'
-data_test <- data_new[data_new$sale_price !=0 & data_new$sales_s <= 9,]
+#data_test <- data_new[data_new$sale_price !=0 & data_new$sales_s <= 9,]
+data_test <- data_new[data_new$sale_price !=0,]
 data_test$sales_s <- round((data_test$sale_price - mean(data_test$sale_price))/sd(data_test$sale_price),0)
+unique(data_test$sales_s)
 
 write.csv(data_test, paste0(outfolder, 'RLID_sales.csv'), 
           row.names = FALSE)
