@@ -29,15 +29,15 @@ def getIntrado():
     df = df.drop_duplicates(subset=['KEY'])   
     return df
 
+engine = create_engine(   
+"mssql+pyodbc:///?odbc_connect="
+"Driver%3D%7BODBC+Driver+17+for+SQL+Server%7D%3B"
+"Server%3Drliddb.int.lcog.org%2C5433%3B"
+"Database%3DRLIDGeo%3B"
+"Trusted_Connection%3Dyes%3B"
+"ApplicationIntent%3DReadWrite%3B"
+"WSID%3Dclwrk4087.int.lcog.org%3B")
 def getMSAGrange():
-    engine = create_engine(   
-    "mssql+pyodbc:///?odbc_connect="
-    "Driver%3D%7BODBC+Driver+17+for+SQL+Server%7D%3B"
-    "Server%3Drliddb.int.lcog.org%2C5433%3B"
-    "Database%3DRLIDGeo%3B"
-    "Trusted_Connection%3Dyes%3B"
-    "ApplicationIntent%3DReadWrite%3B"
-    "WSID%3Dclwrk4087.int.lcog.org%3B")
     sql = '''
     SELECT 
     emergency_service_number AS ESN,
@@ -59,6 +59,21 @@ def getMSAGrange():
     df['KEY'] = df.apply(lambda row: str(row.ESN) + '_' + row.STREET + '_' +  row.CODE + '_' + str(row.LOW)  + '_' +  str(row.HIGH)  + '_' +  row.CITY, axis=1)
     df = df.drop_duplicates(subset=['KEY'])
     return gdf, df
+
+def getAddressPoints():
+    sql = '''
+    SELECT 
+    emergency_service_number AS ESN,
+    house_nbr AS HouseNbr,
+    street_name AS STREET,
+    street_type_code AS CODE,
+    city_name AS CITY,
+    Shape.STAsBinary() AS GEOM
+    FROM dbo.Site_Address;
+    '''
+    gdf = gpd.GeoDataFrame.from_postgis(sql, engine, geom_col='GEOM')
+    gdf['CITY'] = gdf.CITY.str.upper()
+    return gdf
 
 def getCommonKeys():
     df1 = getMSAGrange()[1]
