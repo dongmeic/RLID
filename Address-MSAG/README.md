@@ -2,11 +2,11 @@
 
 The task is to compare the MSAG range between the RLID address points and the Intrado extract.
 
-## steps
+## Steps
 
 1. Read (and clean) data on address points, MSAG range, and the Intrado extract table;
 
-The clean step is to make sure the emergency service number (ESN), street name (STREET), road type (CODE), house number range in low (LOW) and in high (HIGH), and city name (CITY) are in the same format between datasets, to create an unique key for the match. 
+The clean step is to make sure the emergency service number (ESN), street name (STREET), road type (CODE), house number range in low (LOW) and high (HIGH), and city name (CITY) are in the same format between datasets, to create an unique key for the match. 
 
 2. Compare the MSAG range and Intrado extract table by different cases;
 
