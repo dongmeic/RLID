@@ -1,6 +1,6 @@
 # Match RLID address points with [MSAG (Master Street Address Guide)](https://nenawiki.org/wiki/MSAG_(Master_Street_Address_Guide))
 
-The task is to compare the MSAG range between the RLID address points and the Intrado extract.
+The task is to compare the MSAG range between the RLID address points and the Intrado extract. The data folder is G:\projects\Address_Points\9-1-1_Net. 
 
 ## Steps
 
