@@ -3,6 +3,29 @@ import os
 import geopandas as gpd
 from sqlalchemy import create_engine
 
+# read the Intrado extract excel
+inpath = r'G:\projects\Address_Points\9-1-1_Net'
+file = 'LANEORX2May2021.xls'
+#selected_columns = ['ESN', 'STREET', 'CODE', 'LOW', 'HIGH', 'CITY']
+selected_columns = ['ESN', 'DI', 'STREET', 'STCODE', 'CTCODE', 'LOW', 'HIGH']
+
+def getIntrado():
+    df = pd.read_excel(os.path.join(inpath, file), skiprows = [1])
+    df = df[df.columns.drop(list(df.filter(regex='Unnamed')))]
+    df['CITY'] = df.COMM.apply(lambda x: adjustCityName(x))
+    # export sdf for review
+    sdf = df[df.CITY == 'OTHER']
+    df = df[df.CITY != 'OTHER']
+    df['STCODE'] = df.STREET.apply(lambda x: adjustAddress(x)[1]) 
+    df['STREET'] = df.STREET.apply(lambda x: adjustAddress(x)[0])
+    dt = getMSAGrange()[2]
+    df['CTCODE'] = df['CITY'].map(dt)
+    df = df.sort_values(by=selected_columns)[selected_columns]
+    df.fillna("",inplace=True)
+    df['KEY'] = df.apply(lambda row: str(row.ESN) + '_' + str(row.DI) + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE + '_' + str(row.LOW)  + '_' +  str(row.HIGH), axis=1)
+    df = df.drop_duplicates(subset=['KEY'])   
+    return df, sdf
+
 # split the address with street name and type
 def adjustAddress(x):
     code = x.split(' ')[-1]
@@ -15,21 +38,23 @@ def adjustAddress(x):
         code=''
     return x, code
 
-# read the Intrado extract excel
-inpath = r'G:\projects\Address_Points\9-1-1_Net'
-file = 'LANEORX2May2021.xls'
-selected_columns = ['ESN', 'STREET', 'CODE', 'LOW', 'HIGH', 'CITY']
-def getIntrado():
-    df = pd.read_excel(os.path.join(inpath, file), skiprows = [1])
-    df = df[df.columns.drop(list(df.filter(regex='Unnamed')))]
-    df['CODE'] = df.STREET.apply(lambda x: adjustAddress(x)[1])
-    df['STREET'] = df.STREET.apply(lambda x: adjustAddress(x)[0])
-    df.rename(columns={"COMM": "CITY"}, inplace = True)
-    df = df.sort_values(by=selected_columns)[selected_columns]
-    df.fillna("",inplace=True)
-    df['KEY'] = df.apply(lambda row: str(row.ESN) + '_' + row.STREET + '_' +  row.CODE + '_' + str(row.LOW)  + '_' +  str(row.HIGH)  + '_' +  row.CITY, axis=1)
-    df = df.drop_duplicates(subset=['KEY'])   
-    return df
+# change the city names from the column 'COMM'
+def adjustCityName(x):
+    if x == 'EUG':
+        x = 'EUGENE'
+    elif x == 'JUNETION CITY':
+        x = 'JUNCTION CITY'
+    elif x == 'FLORENCE PD-WEST LANE E911':
+        x = 'FLORENCE'
+    elif x == 'COTTAGE GROVE-SOUTH LANE E911':
+        x = 'COTTAGE GROVE'
+    elif x == 'OAKRIDGE-EAST LANE E911':
+        x = 'OAKRIDGE'
+    elif 'LANE' in x or 'IN-' in x:
+        x = 'OTHER'
+    else:
+        x = x
+    return x
 
 # read MSA range and address points from RLID
 engine = create_engine(   
@@ -46,22 +71,27 @@ def getMSAGrange():
     emergency_service_number AS ESN,
     from_house_number AS LOW,
     to_house_number AS HIGH,
+    pre_direction_code AS DI,
     street_name AS STREET,
-    street_type_code AS CODE,
+    street_type_code AS STCODE,
     city_name AS CITY,
+    city_code AS CTCODE,
     Shape.STAsBinary() AS GEOM
     FROM dbo.MSAG_Range;
     '''
     gdf = gpd.GeoDataFrame.from_postgis(sql, engine, geom_col='GEOM')
     gdf['STREET'] = gdf.STREET.str.upper()
-    gdf['CODE'] = gdf.CODE.str.upper()
+    gdf['STCODE'] = gdf.STCODE.str.upper()
     gdf['CITY'] = gdf.CITY.str.upper()
+    dictdf = gdf[['CITY', 'CTCODE']].drop_duplicates(ignore_index=True)
+    dt = dict(zip(dictdf.CITY, dictdf.CTCODE))
     
     df = gdf.sort_values(by=selected_columns)[selected_columns]
-    df.fillna("",inplace=True)
-    df['KEY'] = df.apply(lambda row: str(row.ESN) + '_' + row.STREET + '_' +  row.CODE + '_' + str(row.LOW)  + '_' +  str(row.HIGH)  + '_' +  row.CITY, axis=1)
+    df.loc[df.DI.astype(str) == 'nan',  'DI']= None
+    df.fillna("", inplace=True)
+    df['KEY'] = df.apply(lambda row: str(row.ESN) + '_' + str(row.DI) + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE + '_' + str(row.LOW)  + '_' +  str(row.HIGH), axis=1)
     df = df.drop_duplicates(subset=['KEY'])
-    return gdf, df
+    return gdf, df, dt
 
 def getAddressPoints():
     sql = '''
@@ -81,7 +111,7 @@ def getAddressPoints():
 # the key is a concatenation of all common addressing elements between the two comparing datasets
 def getCommonKeys():
     df1 = getMSAGrange()[1]
-    df2 = getIntrado()
+    df2 = getIntrado()[0]
     common_keys = [key for key in df1.KEY.unique() if key in df2.KEY.unique()]
     return common_keys
 
@@ -98,7 +128,7 @@ def checkMSAGrange():
     df1 = getMSAGrange()[1]
     df1['D'] = df1.KEY.apply(lambda x: InCommon(x))
     df3 = df1.loc[df1[df1.D==0].index,]
-    df2 = getIntrado()
+    df2 = getIntrado()[0]
     df2['D'] = df2.KEY.apply(lambda x: InCommon(x))
     df4 = df2.loc[df2[df2.D==0].index,]
     
