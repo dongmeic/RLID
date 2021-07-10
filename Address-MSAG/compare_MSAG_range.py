@@ -22,9 +22,10 @@ def getIntrado():
     df['CTCODE'] = df['CITY'].map(dt)
     df = df.sort_values(by=selected_columns)[selected_columns]
     df.fillna("",inplace=True)
-    df['KEY'] = df.apply(lambda row: str(row.ESN) + '_' + str(row.DI) + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE + '_' + str(row.LOW)  + '_' +  str(row.HIGH), axis=1)
-    df = df.drop_duplicates(subset=['KEY'])   
-    return df, sdf
+    df['KEY'] = df.apply(lambda row: str(row.ESN) + '_' + row.DI + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE + '_' + str(row.LOW)  + '_' +  str(row.HIGH), axis=1)
+    df = df.drop_duplicates(subset=['KEY'])
+    ndf = df[selected_columns]
+    return df, sdf, ndf
 
 # split the address with street name and type
 def adjustAddress(x):
@@ -89,7 +90,7 @@ def getMSAGrange():
     df = gdf.sort_values(by=selected_columns)[selected_columns]
     df.loc[df.DI.astype(str) == 'nan',  'DI']= None
     df.fillna("", inplace=True)
-    df['KEY'] = df.apply(lambda row: str(row.ESN) + '_' + str(row.DI) + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE + '_' + str(row.LOW)  + '_' +  str(row.HIGH), axis=1)
+    df['KEY'] = df.apply(lambda row: str(row.ESN) + '_' + row.DI + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE + '_' + str(row.LOW)  + '_' +  str(row.HIGH), axis=1)
     df = df.drop_duplicates(subset=['KEY'])
     return gdf, df, dt
 
@@ -98,15 +99,22 @@ def getAddressPoints():
     SELECT 
     emergency_service_number AS ESN,
     house_nbr AS HouseNbr,
+    pre_direction_code AS DI,
     street_name AS STREET,
-    street_type_code AS CODE,
+    street_type_code AS STCODE,
     city_name AS CITY,
     Shape.STAsBinary() AS GEOM
     FROM dbo.Site_Address;
     '''
     gdf = gpd.GeoDataFrame.from_postgis(sql, engine, geom_col='GEOM')
     gdf['CITY'] = gdf.CITY.str.upper()
-    return gdf
+    
+    dt = getMSAGrange()[2]
+    gdf['CTCODE'] = gdf['CITY'].map(dt)
+    selected_columns = ['ESN', 'DI', 'STREET', 'STCODE', 'CTCODE', 'HouseNbr']
+    df = gdf.sort_values(by=selected_columns)[selected_columns]
+    
+    return gdf, df
 
 # the key is a concatenation of all common addressing elements between the two comparing datasets
 def getCommonKeys():
@@ -134,14 +142,14 @@ def checkMSAGrange():
     
     # partial keys without certain addressing elements
     # excluding high house number range
-    df3['KEYL'] = df3.apply(lambda row: str(row.ESN) + '_' + row.STREET + '_' +  row.CODE + '_' + str(row.LOW) + '_' +  row.CITY, axis=1)
-    df4['KEYL'] = df4.apply(lambda row: str(row.ESN) + '_' + row.STREET + '_' +  row.CODE + '_' + str(row.LOW) + '_' +  row.CITY, axis=1)
+    df3['KEYL'] = df3.apply(lambda row: str(row.ESN) + '_' + row.DI + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE + '_' + str(row.LOW), axis=1)
+    df4['KEYL'] = df4.apply(lambda row: str(row.ESN) + '_' + row.DI + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE + '_' + str(row.LOW), axis=1)
     # excluding low house number range
-    df3['KEYH'] = df3.apply(lambda row: str(row.ESN) + '_' + row.STREET + '_' +  row.CODE + '_' + str(row.HIGH) + '_' +  row.CITY, axis=1)
-    df4['KEYH'] = df4.apply(lambda row: str(row.ESN) + '_' + row.STREET + '_' +  row.CODE + '_' + str(row.HIGH) + '_' +  row.CITY, axis=1)
+    df3['KEYH'] = df3.apply(lambda row: str(row.ESN) + '_' + row.DI + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE + '_' + str(row.HIGH), axis=1)
+    df4['KEYH'] = df4.apply(lambda row: str(row.ESN) + '_' + row.DI + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE + '_' + str(row.HIGH), axis=1)
     # excluding house number range
-    df3['KEYC'] = df3.apply(lambda row: str(row.ESN) + '_' + row.STREET + '_' +  row.CODE + '_' +  row.CITY, axis=1)
-    df4['KEYC'] = df4.apply(lambda row: str(row.ESN) + '_' + row.STREET + '_' +  row.CODE + '_' +  row.CITY, axis=1)
+    df3['KEYC'] = df3.apply(lambda row: str(row.ESN) + '_' + row.DI + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE, axis=1)
+    df4['KEYC'] = df4.apply(lambda row: str(row.ESN) + '_' + row.DI + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE, axis=1)
     
     # merge the MSAG range with the Intrado extract on the partial keys
     df5 = df3.merge(df4, how='left', left_on='KEYL', right_on='KEYL')
@@ -190,8 +198,8 @@ def checkMSAGrange():
     gdf.loc[idx1.intersection(idx2), 'DIFF'] = 5
     
     # 5. no match on the partial keys without the house number range and ESN - 6
-    df3['KEYA'] = df3.apply(lambda row: row.STREET + '_' +  row.CODE + '_' +  row.CITY, axis=1)
-    df4['KEYA'] = df4.apply(lambda row: row.STREET + '_' +  row.CODE + '_' +  row.CITY, axis=1)
+    df3['KEYA'] = df3.apply(lambda row: row.DI + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE, axis=1)
+    df4['KEYA'] = df4.apply(lambda row: row.DI + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE, axis=1)
     keys = [key for key in df3.KEYA.unique() if key in df4.KEYA.unique()]
     idx1 = gdf[gdf.MATCH.isnull()].index
     idx2 = df3[df3.KEYA.isin(keys)].index
@@ -219,8 +227,8 @@ def checkMSAGrange():
     gdf.loc[idx1.intersection(idx2), 'DIFF'] = 6
     
     # 6. no match on the partial keys without the house number range, ESN, and road type - 7
-    df3['KEYS'] = df3.apply(lambda row: row.STREET + '_' +  row.CITY, axis=1)
-    df4['KEYS'] = df4.apply(lambda row: row.STREET + '_' +  row.CITY, axis=1)
+    df3['KEYS'] = df3.apply(lambda row: row.DI + '_' + row.STREET + '_' + row.CTCODE, axis=1)
+    df4['KEYS'] = df4.apply(lambda row: row.DI + '_' + row.STREET + '_' + row.CTCODE, axis=1)
     keys = [key for key in df3.KEYS.unique() if key in df4.KEYS.unique()]
     idx1 = gdf[gdf.MATCH.isnull()].index
     idx2 = df3[df3.KEYS.isin(keys)].index
@@ -239,7 +247,7 @@ def checkMSAGrange():
         h1 = list(df3[df3.KEYS==key].HIGH.values)
         h2 = list(df4[df4.KEYS==key].HIGH.values)
         h = [h for h in h2 if h not in h1]
-        c = list(df4[df4.KEYS==key].CODE.unique())
+        c = list(df4[df4.KEYS==key].STCODE.unique())
         esn.append(e)
         low.append(l)
         high.append(h)
