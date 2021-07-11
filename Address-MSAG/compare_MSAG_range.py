@@ -2,12 +2,31 @@ import pandas as pd
 import os
 import geopandas as gpd
 from sqlalchemy import create_engine
+import warnings
 
 # read the Intrado extract excel
 inpath = r'G:\projects\Address_Points\9-1-1_Net'
 file = 'LANEORX2May2021.xls'
 #selected_columns = ['ESN', 'STREET', 'CODE', 'LOW', 'HIGH', 'CITY']
 selected_columns = ['ESN', 'DI', 'STREET', 'STCODE', 'CTCODE', 'LOW', 'HIGH']
+
+
+
+def to_int(x):
+    try:
+        return int(x)
+    except:
+        return -1
+
+def withinRange(x, ie_sdf):
+    for i in range(ie_sdf.shape[0]):
+        if ie_sdf.HIGH.values[i] >= x >= ie_sdf.LOW.values[i]:
+            diff = 1
+            match = 'Matched in one of the multiple ranges'
+            return diff, match
+    diff = 4
+    match = 'Outside of one of the multiple ranges'
+    return diff, match
 
 def getIntrado():
     df = pd.read_excel(os.path.join(inpath, file), skiprows = [1])
