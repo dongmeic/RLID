@@ -1,6 +1,6 @@
 # Match RLID address points with [MSAG (Master Street Address Guide)](https://nenawiki.org/wiki/MSAG_(Master_Street_Address_Guide))
 
-The task is to compare the MSAG range between the RLID address points and the Intrado extract. The data folder is G:\projects\Address_Points\9-1-1_Net. The ArcGIS Pro project `compare_MSAG_range.aprx` shows the match results in  `AddressPoints.shp`. 
+The task is to compare the MSAG range between the RLID address points and the Intrado extract. The data folder is G:\projects\Address_Points\9-1-1_Net. The ArcGIS Pro project `compare_MSAG_range.aprx` shows the match results in  `AddressPoints.shp`. This [script](https://github.com/dongmeic/RLID/blob/main/Address-MSAG/compare_MSAG_range.py) explains codes for the functions. 
 
 ## Steps
 
@@ -8,7 +8,7 @@ The task is to compare the MSAG range between the RLID address points and the In
 
 The clean step is to make sure the emergency service number (ESN), street name (STREET), road/street type (STCODE), house number range in low (LOW) and high (HIGH), city name (CITY) and city code (CTCODE) are in the same format between datasets, to create an unique key for the match. 
 
-2. Compare the MSAG range and Intrado extract table by different cases;
+2. Compare the MSAG range and Intrado extract table by different cases, see [codes](https://github.com/dongmeic/RLID/blob/main/Address-MSAG/1.compare_MSAG_range.ipynb);
 
 (0) No match, code 0;
 
@@ -26,7 +26,7 @@ The clean step is to make sure the emergency service number (ESN), street name (
 
 (7) No match on the road type and possibly mismatched on the house number range and ESN, code 7;
 
-3. Compare the address points and Intrado extract table by different cases;
+3. Compare the address points and Intrado extract table by different cases, see [codes](https://github.com/dongmeic/RLID/blob/main/Address-MSAG/3.match_address_points_with_Intrado.ipynb);
 
 (0) No match, code 0;
 
