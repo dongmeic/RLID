@@ -1,8 +1,7 @@
 import pandas as pd
-import os
+import os, warnings, timeit
 import geopandas as gpd
 from sqlalchemy import create_engine
-import warnings
 
 # read the Intrado extract excel
 inpath = r'G:\projects\Address_Points\9-1-1_Net'
@@ -10,27 +9,10 @@ file = 'LANEORX2May2021.xls'
 #selected_columns = ['ESN', 'STREET', 'CODE', 'LOW', 'HIGH', 'CITY']
 selected_columns = ['ESN', 'DI', 'STREET', 'STCODE', 'CTCODE', 'LOW', 'HIGH']
 
-
-
-def to_int(x):
-    try:
-        return int(x)
-    except:
-        return -1
-
-def withinRange(x, ie_sdf):
-    for i in range(ie_sdf.shape[0]):
-        if ie_sdf.HIGH.values[i] >= x >= ie_sdf.LOW.values[i]:
-            diff = 1
-            match = 'Matched in one of the multiple ranges'
-            return diff, match
-    diff = 4
-    match = 'Outside of one of the multiple ranges'
-    return diff, match
-
 def getIntrado():
     df = pd.read_excel(os.path.join(inpath, file), skiprows = [1])
     df = df[df.columns.drop(list(df.filter(regex='Unnamed')))]
+    df.loc[df.STREET == 'DOONBRAE LANE', 'STREET'] = 'DOONBRAE LN'
     df['CITY'] = df.COMM.apply(lambda x: adjustCityName(x))
     # export sdf for review
     sdf = df[df.CITY == 'OTHER']
@@ -41,6 +23,7 @@ def getIntrado():
     df['CTCODE'] = df['CITY'].map(dt)
     df = df.sort_values(by=selected_columns)[selected_columns]
     df.fillna("",inplace=True)
+    df.loc[(df.STREET.isin(['PACHYSANDRA', '12TH', '47TH'])) & (df.STCODE == ''), 'STCODE'] = ['PL', 'ST', 'ST']
     df['KEY'] = df.apply(lambda row: str(row.ESN) + '_' + row.DI + '_' + row.STREET + '_' +  row.STCODE + '_' +  row.CTCODE + '_' + str(row.LOW)  + '_' +  str(row.HIGH), axis=1)
     df = df.drop_duplicates(subset=['KEY'])
     ndf = df[selected_columns]
@@ -130,6 +113,7 @@ def getAddressPoints():
     
     dt = getMSAGrange()[2]
     gdf['CTCODE'] = gdf['CITY'].map(dt)
+    gdf.loc[(gdf.STREET == '8TH') & (gdf.STCODE == 'PL') & (gdf.CTCODE == 'JUN'), 'DI'] = 'W'
     selected_columns = ['ESN', 'DI', 'STREET', 'STCODE', 'CTCODE', 'HouseNbr']
     df = gdf.sort_values(by=selected_columns)[selected_columns]
     
