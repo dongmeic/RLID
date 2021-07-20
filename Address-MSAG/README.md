@@ -10,6 +10,8 @@ The clean step is to make sure the emergency service number (ESN), street name (
 
 2. Compare the MSAG range and Intrado extract table by different cases;
 
+(0) No match, code 0;
+
 (1) Exactly matched - ESN, DI, STREET, STCODE, CTCODE, LOW, and HIGH are all the same between the two datasets, code 1;
 
 (2) No match on the high house number range, code 2;
@@ -24,11 +26,11 @@ The clean step is to make sure the emergency service number (ESN), street name (
 
 (7) No match on the road type and possibly mismatched on the house number range and ESN, code 7;
 
-(8) No match, code 0
-
 3. Compare the address points and Intrado extract table by different cases;
 
-(1) Matched - exactly matched means ESN, DI, STREET, STCODE, and CTCODE are matched and the house number in the address points are within the house number range in the Intrado extract table, matched with a different ESN or street code or without a direction is also considered 'matched', code 1;
+(0) No match, code 0;
+
+(1) Matched - exactly matched means ESN, DI, STREET, STCODE, and CTCODE are matched and the house number in the address points are within the house number range in the Intrado extract table, matched with a different ESN or street code or without a direction are also considered 'matched', code 1;
 
 (2) Outside of the house number range in the Intrado extract table in the high value, code 2;
 
@@ -37,7 +39,5 @@ The clean step is to make sure the emergency service number (ESN), street name (
 (4) Outside of the house number range in the Intrado extract table when there is more than one range, code 4;
 
 (5) Missing ESN in the Intrado extract, code 5;
-
-(6) No match, code 0
 
 4. Write up the match notes on the MSAG range and address points, and export data.
